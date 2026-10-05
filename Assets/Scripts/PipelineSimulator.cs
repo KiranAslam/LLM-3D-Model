@@ -40,17 +40,13 @@ public class PipelineSimulator : MonoBehaviour
 
     public void Play(string sentence)
     {
-        currentStageIndex = 0;
         SetActiveStage(0);
     }
 
     public void NextStage()
     {
         if (currentStageIndex < stages.Length - 1)
-        {
-            currentStageIndex++;
-            SetActiveStage(currentStageIndex);
-        }
+            SetActiveStage(currentStageIndex + 1);
     }
 
     public void JumpTo(int index)
