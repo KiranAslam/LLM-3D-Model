@@ -23,14 +23,14 @@ public class DummyDataProvider : MonoBehaviour
     [Header("8 demo sentences — Input Sentences panel isi list se populate hoga")]
     public SentenceEntry[] sentences = new SentenceEntry[]
     {
-        new SentenceEntry { sentence = "the cat sat on", predictedWords = new[] { "mat", "floor", "bird", "fox", "slept" }, predictedProbabilities = new[] { 99.993f, 0.0028f, 0.0008f, 0.0007f, 0.0005f } },
-        new SentenceEntry { sentence = "a dog ran near", predictedWords = new[] { "tree", "rock", "ran", "walked", "stood" }, predictedProbabilities = new[] { 99.994f, 0.0032f, 0.0012f, 0.0005f, 0.0003f } },
-        new SentenceEntry { sentence = "bird jumped under grass", predictedWords = new[] { "fox", "grass", "under", "slept", "mat" }, predictedProbabilities = new[] { 99.999f, 0.0004f, 0.0002f, 0.0002f, 0.0001f } },
-        new SentenceEntry { sentence = "rabbit slept beside bed", predictedWords = new[] { "bear", "bed", "ran", "slept", "bird" }, predictedProbabilities = new[] { 99.998f, 0.0011f, 0.0003f, 0.0003f, 0.0002f } },
-        new SentenceEntry { sentence = "wolf walked on floor", predictedWords = new[] { "mouse", "slept", "dog", "bed", "waited" }, predictedProbabilities = new[] { 99.999f, 0.0003f, 0.0002f, 0.0001f, 0.0001f } },
-        new SentenceEntry { sentence = "mouse waited near rock", predictedWords = new[] { "cat", "walked", "fox", "played", "jumped" }, predictedProbabilities = new[] { 99.999f, 0.0002f, 0.0002f, 0.0001f, 0.0001f } },
-        new SentenceEntry { sentence = "bear stood under log", predictedWords = new[] { "dog", "fox", "on", "bird", "tree" }, predictedProbabilities = new[] { 99.997f, 0.0007f, 0.0005f, 0.0004f, 0.0003f } },
-        new SentenceEntry { sentence = "fox played beside box", predictedWords = new[] { "bird", "dog", "mat", "cat", "under" }, predictedProbabilities = new[] { 99.996f, 0.0008f, 0.0006f, 0.0005f, 0.0004f } },
+        new SentenceEntry { sentence = "the cat sat on the", predictedWords = new[] { "mat", "sofa", "bed", "floor", "chair" }, predictedProbabilities = new[] { 72f, 15f, 6f, 4f, 3f } },
+        new SentenceEntry { sentence = "a dog ran through the", predictedWords = new[] { "park", "field", "yard", "forest", "street" }, predictedProbabilities = new[] { 45f, 25f, 15f, 9f, 6f } },
+        new SentenceEntry { sentence = "the bird flew over the", predictedWords = new[] { "lake", "trees", "house", "field", "river" }, predictedProbabilities = new[] { 35f, 28f, 16f, 12f, 9f } },
+        new SentenceEntry { sentence = "the rabbit ate a fresh", predictedWords = new[] { "carrot", "leaf", "apple", "flower", "vegetable" }, predictedProbabilities = new[] { 55f, 18f, 12f, 9f, 6f } },
+        new SentenceEntry { sentence = "the wolf howled at the", predictedWords = new[] { "moon", "door", "stars", "window", "hunter" }, predictedProbabilities = new[] { 50f, 18f, 14f, 10f, 8f } },
+        new SentenceEntry { sentence = "the mouse hid under the", predictedWords = new[] { "table", "bed", "chair", "floor", "sofa" }, predictedProbabilities = new[] { 48f, 22f, 14f, 9f, 7f } },
+        new SentenceEntry { sentence = "the bear caught a large", predictedWords = new[] { "fish", "salmon", "deer", "rabbit", "bird" }, predictedProbabilities = new[] { 38f, 27f, 16f, 11f, 8f } },
+        new SentenceEntry { sentence = "the fox jumped over the", predictedWords = new[] { "fence", "log", "stream", "wall", "bush" }, predictedProbabilities = new[] { 42f, 23f, 15f, 12f, 8f } },
     };
 
     void Awake()
@@ -71,7 +71,7 @@ public class DummyDataProvider : MonoBehaviour
         return ids;
     }
 
-    // Kisi bhi matrix-jaisi cheez (embedding cells, attention weights, logits) ke
+
     // liye ek 1D array of random-but-seeded floats — same rng se call karo to
     // consistent values milengi.
     public static float[] GenerateValues(System.Random rng, int count, float min, float max)
@@ -82,7 +82,6 @@ public class DummyDataProvider : MonoBehaviour
         return values;
     }
 
-    // Currently selected sentence ke liye poora predicted-word entry dhoondo.
     public SentenceEntry GetEntry(string sentence)
     {
         foreach (var entry in sentences)

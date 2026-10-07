@@ -63,6 +63,12 @@ public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable
     [Header("Text thickness")]
     public float textThickness = 0.4f;
 
+    private void OnEnable()
+    {
+        if (Application.isPlaying)
+            BuildAllImmediate();
+    }
+
     void Start()
     {
         if (Application.isPlaying)
@@ -135,7 +141,7 @@ public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable
 
     private IEnumerator AnimateBuild()
     {
-        if (cameraController != null && anchors.Length > 0 && anchors[0] != null)
+        if (cameraController != null && anchors != null && anchors.Length > 0 && anchors[0] != null)
             cameraController.FocusOnStage(anchors[0]);
 
         BuildBox(boxPosition, boxSize, boxColor, "FinalLayerNorm_Block");
@@ -162,7 +168,7 @@ public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable
 
         yield return new WaitForSeconds(stepDelay);
 
-        if (cameraController != null && anchors.Length > 1 && anchors[1] != null)
+        if (cameraController != null && anchors != null && anchors.Length > 1 && anchors[1] != null)
             cameraController.FocusOnStage(anchors[1]);
 
         BuildBox(formulaWorld, formulaSize, formulaColor, "Formula_Box");
@@ -179,7 +185,7 @@ public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable
 
         yield return new WaitForSeconds(stepDelay);
 
-        if (cameraController != null && anchors.Length > 2 && anchors[2] != null)
+        if (cameraController != null && anchors != null && anchors.Length > 2 && anchors[2] != null)
             cameraController.FocusOnStage(anchors[2]);
 
         BuildBox(normOutWorld, normOutSize, normOutColor, "NormOut_Sheet");
@@ -327,12 +333,49 @@ public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable
         labelObj.transform.localPosition = localPos;
 
         TextMeshPro tmp = labelObj.AddComponent<TextMeshPro>();
+        if (!EnsureFontAsset(tmp))
+        {
+            DestroyGeneratedObject(labelObj);
+            return;
+        }
+
         tmp.text = text;
         tmp.fontSize = fontSize;
         tmp.color = color;
         tmp.fontStyle = FontStyles.Bold;
         tmp.alignment = TextAlignmentOptions.Midline;
         ApplyThickness(tmp);
+    }
+
+    private bool EnsureFontAsset(TextMeshPro textComponent)
+    {
+        if (textComponent.font == null)
+            textComponent.font = TMP_Settings.defaultFontAsset;
+
+        if (textComponent.font == null)
+            textComponent.font = Resources.Load<TMP_FontAsset>(
+                "Fonts & Materials/LiberationSans SDF"
+            );
+
+        if (textComponent.font != null)
+            return true;
+
+        Debug.LogError(
+            "TextMeshPro font asset is missing. Import TMP Essential Resources or assign a default TMP font asset.",
+            this
+        );
+        return false;
+    }
+
+    private void DestroyGeneratedObject(Object target)
+    {
+        if (target == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(target);
+        else
+            DestroyImmediate(target);
     }
 
     void ApplyThickness(TextMeshPro tmp)

@@ -102,23 +102,6 @@ public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable
         CreateSectionTitle(matrixTitleLabel, slabPosition + matrixTitleOffset);
         CreateVectorGroupTitle();
         ConnectIdsToSlab(slab);
-
-        if (tokenGenerator != null)
-        {
-            tokenGenerator.SetColumnLabelsVisible(false);
-            for (int i = 0; i < tokenCount; i++)
-            {
-                GameObject tokenChip = tokenGenerator.GetTokenObject(i);
-                GameObject idChip = tokenGenerator.GetIdObject(i);
-                if (tokenChip != null)
-                    tokenChip.SetActive(false);
-                if (idChip != null)
-                    idChip.SetActive(false);
-                LineRenderer tokenLine = tokenGenerator.GetConnectionLine(i);
-                if (tokenLine != null)
-                    tokenLine.enabled = false;
-            }
-        }
     }
 
     private IEnumerator AnimateLookups(GameObject slab)
@@ -126,17 +109,12 @@ public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable
         float rightFaceX = slab.transform.position.x + slabScale.x / 2f;
         Vector3 matrixCenter = slab.transform.position;
 
-        if (tokenGenerator != null)
-            tokenGenerator.SetColumnLabelsVisible(false);
-
         for (int i = 0; i < tokenCount; i++)
         {
-            GameObject tokenChip = tokenGenerator != null ? tokenGenerator.GetTokenObject(i) : null;
-            GameObject idChip = tokenGenerator != null ? tokenGenerator.GetIdObject(i) : null;
-
-            LineRenderer tokenLine = tokenGenerator != null ? tokenGenerator.GetConnectionLine(i) : null;
-            if (tokenLine != null)
-                tokenLine.enabled = false;
+            GameObject tokenSource = tokenGenerator != null ? tokenGenerator.GetTokenObject(i) : null;
+            GameObject idSource = tokenGenerator != null ? tokenGenerator.GetIdObject(i) : null;
+            GameObject tokenChip = CreateTransferCopy(tokenSource);
+            GameObject idChip = CreateTransferCopy(idSource);
 
             yield return StartCoroutine(MoveAndShrinkPair(tokenChip, idChip, matrixCenter, chipTravelDuration));
 
@@ -149,6 +127,16 @@ public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable
 
             CreateVectorAtPoint(end + Vector3.right * vectorGapX, i);
         }
+    }
+
+    private GameObject CreateTransferCopy(GameObject source)
+    {
+        if (source == null)
+            return null;
+
+        GameObject copy = Instantiate(source, transform, true);
+        copy.name = $"{source.name}_EmbeddingCopy";
+        return copy;
     }
 
     private IEnumerator MoveAndShrinkPair(GameObject a, GameObject b, Vector3 target, float duration)
@@ -451,19 +439,6 @@ public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable
 
         for (int i = 0; i < tokenCount; i++)
         {
-            float idPosY =
-                idStartY -
-                i * idYStep;
-
-            Vector3 idWorldPos =
-                transform.TransformPoint(
-                    new Vector3(
-                        idStartX,
-                        idPosY,
-                        0f
-                    )
-                );
-
             float t =
                 tokenCount > 1
                     ? (float)i / (tokenCount - 1)
@@ -476,10 +451,6 @@ public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable
                     t
                 ) + slab.transform.position.y;
 
-            Vector3 start =
-                idWorldPos +
-                Vector3.right * lineGap;
-
             Vector3 end =
                 new Vector3(
                     rightFaceX + lineCrossDistance,
@@ -487,10 +458,10 @@ public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable
                     slab.transform.position.z
                 );
 
-            if (convergeAtCenter)
-                DrawLine(start, centerPoint, end);
-            else
-                DrawLine(start, end);
+            Vector3 outputStart = convergeAtCenter
+                ? centerPoint
+                : new Vector3(rightFaceX, outputEndY, slab.transform.position.z);
+            DrawLine(outputStart, end);
 
             CreateVectorAtPoint(
                 end + Vector3.right * vectorGapX,
