@@ -66,6 +66,11 @@ public class IntegratedCameraController : MonoBehaviour
 
     // Dynamic target tracking point
     private Vector3 calculatedCenterPoint;
+    private bool useTargetFocusPosition;
+    private bool allowUserRotation = true;
+    private bool allowUserZoom = true;
+    private bool allowHorizontalPan = true;
+    private bool allowVerticalPan = true;
 
     void Start()
     {
@@ -99,7 +104,7 @@ public class IntegratedCameraController : MonoBehaviour
             && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
         // === 1. MOUSE DRAG ROTATION ===
-        if (!mouseOverUI && Input.GetMouseButton(0))
+        if (allowUserRotation && !mouseOverUI && Input.GetMouseButton(0))
         {
             targetYRot += Input.GetAxis("Mouse X") * mouseDragSensitivity;
             targetXRot -= Input.GetAxis("Mouse Y") * mouseDragSensitivity;
@@ -109,13 +114,14 @@ public class IntegratedCameraController : MonoBehaviour
         if (!mouseOverUI && Input.GetMouseButton(1))
         {
             Vector3 right = transform.right;
-            Vector3 up = transform.up;
-            targetPanOffset -= right * Input.GetAxis("Mouse X") * panSpeed * targetDistance;
-            targetPanOffset -= up * Input.GetAxis("Mouse Y") * panSpeed * targetDistance;
+            if (allowHorizontalPan)
+                targetPanOffset -= right * Input.GetAxis("Mouse X") * panSpeed * targetDistance;
+            if (allowVerticalPan)
+                targetPanOffset -= transform.up * Input.GetAxis("Mouse Y") * panSpeed * targetDistance;
         }
 
         // === 3. SCROLL ZOOM ===
-        if (!mouseOverUI)
+        if (allowUserZoom && !mouseOverUI)
         {
             float scrollDelta = Input.mouseScrollDelta.y;
             if (Mathf.Abs(scrollDelta) > 0.001f)
@@ -165,7 +171,7 @@ public class IntegratedCameraController : MonoBehaviour
 
             if (IsTouchOverUI(touch.fingerId)) return;
 
-            if (touch.phase == TouchPhase.Moved)
+            if (allowUserRotation && touch.phase == TouchPhase.Moved)
             {
                 targetYRot += touch.deltaPosition.x * touchRotateSensitivity;
                 targetXRot -= touch.deltaPosition.y * touchRotateSensitivity;
@@ -181,17 +187,19 @@ public class IntegratedCameraController : MonoBehaviour
             Vector2 touchZeroPreviousPosition = touchZero.position - touchZero.deltaPosition;
             Vector2 touchOnePreviousPosition = touchOne.position - touchOne.deltaPosition;
 
-            float previousDistance = (touchZeroPreviousPosition - touchOnePreviousPosition).magnitude;
-            float currentDistanceBetweenFingers = (touchZero.position - touchOne.position).magnitude;
-            float pinchDelta = currentDistanceBetweenFingers - previousDistance;
-
-            targetDistance -= pinchDelta * touchZoomSpeed;
+            if (allowUserZoom)
+            {
+                float previousDistance = (touchZeroPreviousPosition - touchOnePreviousPosition).magnitude;
+                float currentDistanceBetweenFingers = (touchZero.position - touchOne.position).magnitude;
+                float pinchDelta = currentDistanceBetweenFingers - previousDistance;
+                targetDistance -= pinchDelta * touchZoomSpeed;
+            }
 
             Vector2 averageDelta = (touchZero.deltaPosition + touchOne.deltaPosition) * 0.5f;
-            Vector3 right = transform.right;
-            Vector3 up = transform.up;
-            targetPanOffset -= right * averageDelta.x * touchPanSpeed * targetDistance;
-            targetPanOffset -= up * averageDelta.y * touchPanSpeed * targetDistance;
+            if (allowHorizontalPan)
+                targetPanOffset -= transform.right * averageDelta.x * touchPanSpeed * targetDistance;
+            if (allowVerticalPan)
+                targetPanOffset -= transform.up * averageDelta.y * touchPanSpeed * targetDistance;
         }
     }
 
@@ -213,22 +221,59 @@ public class IntegratedCameraController : MonoBehaviour
 
     public void FocusOnStage(Transform focus)
     {
+        FocusOnStage(focus, 1f);
+    }
+
+    public void FocusOnStage(Transform focus, float distanceMultiplier)
+    {
         targetFocus = focus;
-        targetDistance = stageFocusDistance;
+        useTargetFocusPosition = false;
+        targetDistance = stageFocusDistance * distanceMultiplier;
         targetXRot = stageFocusXRot;
         targetYRot = stageFocusYRot;
         targetPanOffset = Vector3.zero;
     }
 
+    public void SetPanOffset(Vector3 panOffset)
+    {
+        targetPanOffset = panOffset;
+        panVelocity = Vector3.zero;
+    }
+
+    public void SetFocusOrigin(Transform focusOrigin)
+    {
+        targetFocus = focusOrigin;
+        useTargetFocusPosition = true;
+        calculatedCenterPoint = focusOrigin.position;
+        centerVelocity = Vector3.zero;
+    }
+
+    public void SetDistance(float distance)
+    {
+        targetDistance = Mathf.Clamp(distance, minDistance, maxDistance);
+    }
+
+    public void SetUserControls(
+        bool allowRotation,
+        bool allowZoom,
+        bool allowHorizontalPan,
+        bool allowVerticalPan)
+    {
+        allowUserRotation = allowRotation;
+        allowUserZoom = allowZoom;
+        this.allowHorizontalPan = allowHorizontalPan;
+        this.allowVerticalPan = allowVerticalPan;
+    }
+
     // Ab panOffset bhi customize ho sakta hai — Y negative karo to camera neeche jayega
     public void ResetToDefaultView(float xRot, float yRot, float distance, Vector3 panOffset = default)
     {
-        targetXRot = xRot;
+        targetXRot = Mathf.Clamp(xRot, minPitch, maxPitch);
         targetYRot = yRot;
         targetDistance = distance;
         targetPanOffset = panOffset;
 
-        currentXRot = xRot;
+        currentXRot = targetXRot;
         currentYRot = yRot;
         currentDistance = distance;
         currentPanOffset = panOffset;
@@ -244,6 +289,9 @@ public class IntegratedCameraController : MonoBehaviour
     /// </summary>
     private Vector3 CalculateAbsoluteCenter(Transform parentTransform)
     {
+        if (useTargetFocusPosition)
+            return parentTransform.position;
+
         // Agar parent ke andar koi baccha child object nahi hai, toh seedha parent ki position de do
         if (parentTransform.childCount == 0) return parentTransform.position;
 

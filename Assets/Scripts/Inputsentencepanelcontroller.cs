@@ -40,8 +40,12 @@ public class InputSentencePanelController : MonoBehaviour
     void OnSentenceSelected(string sentence, Button clickedButton)
     {
         SelectedSentence = sentence;
+        if (PipelineSimulator.Instance != null)
+            PipelineSimulator.Instance.ClearPredictionPanel();
         foreach (Button b in existingButtons)
             b.image.color = (b == clickedButton) ? selectedColor : normalColor;
+        if (PipelineSimulator.Instance != null)
+            PipelineSimulator.Instance.EnableStageButtons();
         if (runButton != null)
             runButton.interactable = true;
     }
