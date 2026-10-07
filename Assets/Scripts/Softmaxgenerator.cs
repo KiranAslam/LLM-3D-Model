@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 [ExecuteAlways]
-public class SoftmaxGenerator : MonoBehaviour
+public class SoftmaxGenerator : MonoBehaviour, ISentenceAnimatable
 {
     private readonly List<GameObject> slabObjects = new();
     private readonly List<LineRenderer> slabLines = new();
@@ -74,6 +74,7 @@ public class SoftmaxGenerator : MonoBehaviour
     public float tokenLabelFontSize = 4f;
     public Color tokenLabelColor = Color.white;
     public float columnLabelYOffset = 1f;
+    public float columnLabelHorizontalGap = 0.8f;
     public float rowLabelXOffset = 1f;
 
     private void Start()
@@ -88,6 +89,20 @@ public class SoftmaxGenerator : MonoBehaviour
         Clear();
         BuildStackAndLines();
         CreateLabel();
+    }
+
+    public void Animate(string sentence)
+    {
+        if (!string.IsNullOrWhiteSpace(sentence))
+            tokenLabels = new List<string>(sentence.Split(' '));
+
+        Rebuild();
+    }
+
+    public void CompleteImmediately()
+    {
+        StopAllCoroutines();
+        Rebuild();
     }
 
     public void Clear()
@@ -337,6 +352,12 @@ public class SoftmaxGenerator : MonoBehaviour
             softmaxStackPosition + labelOffset;
 
         TextMeshPro tmp = labelObj.AddComponent<TextMeshPro>();
+        if (!EnsureFontAsset(tmp))
+        {
+            DestroyGeneratedObject(labelObj);
+            return;
+        }
+
         tmp.text = labelText;
         tmp.fontSize = labelFontSize;
         tmp.color = labelColor;
@@ -355,21 +376,35 @@ public class SoftmaxGenerator : MonoBehaviour
         float topY = frontSheetPos.y + sheetHeight / 2f;
         float bottomY = frontSheetPos.y - sheetHeight / 2f;
 
-        for (
-            int col = 0;
-            col < gridSize && col < tokenLabels.Count;
-            col++
-        )
-        {
-            float x = leftX + (col + 0.5f) * cellW;
+        int columnCount = Mathf.Min(gridSize, tokenLabels.Count);
+        List<TextMeshPro> columnLabels = new List<TextMeshPro>(columnCount);
+        List<float> columnLabelWidths = new List<float>(columnCount);
+        float totalColumnLabelWidth = Mathf.Max(0, columnCount - 1) * columnLabelHorizontalGap;
 
-            Vector3 pos = new Vector3(
-                x,
+        for (int col = 0; col < columnCount; col++)
+        {
+            TextMeshPro label = CreateTokenLabel(tokenLabels[col]);
+            if (label == null)
+                return;
+
+            float labelWidth = Mathf.Max(0.1f, label.GetPreferredValues(tokenLabels[col]).x);
+            columnLabels.Add(label);
+            columnLabelWidths.Add(labelWidth);
+            totalColumnLabelWidth += labelWidth;
+        }
+
+        float nextColumnLabelX = frontSheetPos.x - totalColumnLabelWidth / 2f;
+        for (int col = 0; col < columnCount; col++)
+        {
+            float labelWidth = columnLabelWidths[col];
+            TextMeshPro label = columnLabels[col];
+            label.rectTransform.sizeDelta = new Vector2(labelWidth, cellH * 0.8f);
+            label.transform.localPosition = new Vector3(
+                nextColumnLabelX + labelWidth / 2f,
                 topY + columnLabelYOffset,
                 frontSheetPos.z
             );
-
-            CreateTokenLabel(tokenLabels[col], pos);
+            nextColumnLabelX += labelWidth + columnLabelHorizontalGap;
         }
 
         for (
@@ -386,27 +421,72 @@ public class SoftmaxGenerator : MonoBehaviour
                 frontSheetPos.z
             );
 
-            CreateTokenLabel(tokenLabels[row], pos);
+            TextMeshPro label = CreateTokenLabel(tokenLabels[row]);
+            if (label == null)
+                return;
+
+            label.rectTransform.sizeDelta = new Vector2(cellW * 0.9f, cellH * 0.8f);
+            label.transform.localPosition = pos;
         }
     }
 
-    private void CreateTokenLabel(string text, Vector3 localPos)
+    private TextMeshPro CreateTokenLabel(string text)
     {
         GameObject labelObj = new GameObject(
             $"TokenLabel_{text}"
         );
 
         labelObj.transform.SetParent(transform, false);
-        labelObj.transform.localPosition = localPos;
 
         TextMeshPro tmp = labelObj.AddComponent<TextMeshPro>();
+        if (!EnsureFontAsset(tmp))
+        {
+            DestroyGeneratedObject(labelObj);
+            return null;
+        }
+
         tmp.text = text;
         tmp.fontSize = tokenLabelFontSize;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
+        tmp.overflowMode = TextOverflowModes.Overflow;
         tmp.color = tokenLabelColor;
         tmp.fontStyle = FontStyles.Bold;
-        tmp.alignment = TextAlignmentOptions.Midline;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.ForceMeshUpdate();
 
         ApplyThickness(tmp);
+        return tmp;
+    }
+
+    private bool EnsureFontAsset(TextMeshPro textComponent)
+    {
+        if (textComponent.font == null)
+            textComponent.font = TMP_Settings.defaultFontAsset;
+
+        if (textComponent.font == null)
+            textComponent.font = Resources.Load<TMP_FontAsset>(
+                "Fonts & Materials/LiberationSans SDF"
+            );
+
+        if (textComponent.font != null)
+            return true;
+
+        Debug.LogError(
+            "TextMeshPro font asset is missing. Import TMP Essential Resources or assign a default TMP font asset.",
+            this
+        );
+        return false;
+    }
+
+    private void DestroyGeneratedObject(Object target)
+    {
+        if (target == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(target);
+        else
+            DestroyImmediate(target);
     }
 
     private void ApplyThickness(TextMeshPro tmp)

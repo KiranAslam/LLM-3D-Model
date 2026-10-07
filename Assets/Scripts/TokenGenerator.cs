@@ -71,6 +71,7 @@ public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
     public string tokenColumnLabel = "Token";
     public string idColumnLabel = "ID";
     public float columnLabelYOffset = 1.8f;
+    public float columnLabelXOffset = 0.5f;
     public float columnLabelFontSize = 8f;
     public Color columnLabelColor = Color.black;
 
@@ -96,6 +97,7 @@ public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
     private readonly List<LineRenderer> connectionLines = new();
     private TextMeshPro tokenColumnLabelText;
     private TextMeshPro idColumnLabelText;
+    private bool suppressRevealAnimation;
 
     public GameObject GetTokenObject(int index)
     {
@@ -124,6 +126,8 @@ public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
 
     public void Animate(string sentence)
     {
+        suppressRevealAnimation = false;
+
         if (!string.IsNullOrEmpty(sentence))
         {
             string[] words = sentence.Split(' ');
@@ -136,13 +140,22 @@ public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
         Rebuild();
     }
 
+    public void ShowDefaultView()
+    {
+        StopAllCoroutines();
+        suppressRevealAnimation = true;
+        Rebuild();
+    }
+
     public void Rebuild()
     {
         CancelInvoke(nameof(Rebuild));
         Clear();
         GenerateTokens();
         CreateColumnLabels();
-        if (useRevealAnimation && Application.isPlaying)
+        if (suppressRevealAnimation)
+            SetColumnLabelsVisible(false);
+        if (useRevealAnimation && Application.isPlaying && !suppressRevealAnimation)
             StartCoroutine(AnimateReveal());
     }
 
@@ -233,7 +246,7 @@ public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
         Invoke(nameof(Rebuild), 0.05f);
     }
 
-    private Material GetChipMaterial(float worldWidth, float worldHeight)
+    public Material GetChipMaterial(float worldWidth, float worldHeight)
     {
         int width = Mathf.Clamp(Mathf.RoundToInt(worldWidth * chipPixelsPerUnit / 4f) * 4, 16, 1024);
         int height = Mathf.Clamp(Mathf.RoundToInt(worldHeight * chipPixelsPerUnit / 4f) * 4, 16, 1024);
@@ -722,16 +735,8 @@ public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
 
     private void SetColumnLabelPosition(TextMeshPro label, Vector3 localPosition)
     {
+        localPosition.x += columnLabelXOffset;
         label.transform.localPosition = localPosition;
-        if (!alignChipsLeft)
-            return;
-
-        Renderer labelRenderer = label.GetComponent<Renderer>();
-        if (labelRenderer == null)
-            return;
-
-        float anchorWorldX = transform.TransformPoint(localPosition).x;
-        label.transform.position += Vector3.right * (anchorWorldX - labelRenderer.bounds.min.x);
     }
 
     private void ApplyThickness(TextMeshPro tmp)
