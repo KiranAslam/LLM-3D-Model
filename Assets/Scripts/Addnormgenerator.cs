@@ -1,9 +1,12 @@
+using System.Collections;
 using UnityEngine;
 using TMPro;
 
 [ExecuteAlways]
 public class AddNormGenerator : MonoBehaviour
 {
+    private bool revealRequested;
+
     [Header("Mirror these — LayerOutGenerator ke Inspector values")]
     public Vector3 layerOutPosition = new Vector3(275f, 18f, 0f);
     public Vector3 layerOutSize = new Vector3(18f, 10f, 1f);
@@ -43,7 +46,7 @@ public class AddNormGenerator : MonoBehaviour
 
     private void Start()
     {
-        if (Application.isPlaying)
+        if (Application.isPlaying && !revealRequested)
             Rebuild();
     }
 
@@ -134,6 +137,39 @@ public class AddNormGenerator : MonoBehaviour
             sectionLabelFontSize,
             sectionLabelColor
         );
+    }
+
+    public IEnumerator AnimateReveal(float revealDelay)
+    {
+        revealRequested = true;
+        Rebuild();
+        Transform[] generatedObjects = GetGeneratedObjects();
+        foreach (Transform generatedObject in generatedObjects)
+            generatedObject.gameObject.SetActive(false);
+
+        foreach (Transform generatedObject in generatedObjects)
+        {
+            yield return new WaitForSeconds(revealDelay);
+            if (generatedObject != null)
+                generatedObject.gameObject.SetActive(true);
+        }
+    }
+
+    public void CompleteImmediately()
+    {
+        StopAllCoroutines();
+        foreach (Transform generatedObject in GetGeneratedObjects())
+            if (generatedObject != null)
+                generatedObject.gameObject.SetActive(true);
+    }
+
+    private Transform[] GetGeneratedObjects()
+    {
+        Transform[] generatedObjects = new Transform[transform.childCount];
+        for (int i = 0; i < transform.childCount; i++)
+            generatedObjects[i] = transform.GetChild(i);
+
+        return generatedObjects;
     }
 
     public void Clear()
