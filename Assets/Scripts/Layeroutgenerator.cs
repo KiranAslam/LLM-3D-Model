@@ -1,9 +1,12 @@
+using System.Collections;
 using UnityEngine;
 using TMPro;
 
 [ExecuteAlways]
 public class LayerOutGenerator : MonoBehaviour
 {
+    private bool revealRequested;
+
     [Header("Mirror these — ConcatGenerator ki Inspector values")]
     public Vector3 concatPosition = new Vector3(220f, 18f, 0f);
     public float concatSheetWidth = 14f;
@@ -47,7 +50,7 @@ public class LayerOutGenerator : MonoBehaviour
 
     private void Start()
     {
-        if (Application.isPlaying)
+        if (Application.isPlaying && !revealRequested)
             Rebuild();
     }
 
@@ -87,6 +90,39 @@ public class LayerOutGenerator : MonoBehaviour
             layerOutLabel,
             layerOutPosition + layerOutLabelOffset
         );
+    }
+
+    public IEnumerator AnimateReveal(float revealDelay)
+    {
+        revealRequested = true;
+        Rebuild();
+        Transform[] generatedObjects = GetGeneratedObjects();
+        foreach (Transform generatedObject in generatedObjects)
+            generatedObject.gameObject.SetActive(false);
+
+        foreach (Transform generatedObject in generatedObjects)
+        {
+            yield return new WaitForSeconds(revealDelay);
+            if (generatedObject != null)
+                generatedObject.gameObject.SetActive(true);
+        }
+    }
+
+    public void CompleteImmediately()
+    {
+        StopAllCoroutines();
+        foreach (Transform generatedObject in GetGeneratedObjects())
+            if (generatedObject != null)
+                generatedObject.gameObject.SetActive(true);
+    }
+
+    private Transform[] GetGeneratedObjects()
+    {
+        Transform[] generatedObjects = new Transform[transform.childCount];
+        for (int i = 0; i < transform.childCount; i++)
+            generatedObjects[i] = transform.GetChild(i);
+
+        return generatedObjects;
     }
 
     public void Clear()

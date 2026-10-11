@@ -4,7 +4,7 @@ using UnityEngine;
 using TMPro;
 
 [ExecuteAlways]
-public class LogitsProbabilitiesGenerator : MonoBehaviour, ISentenceAnimatable
+public class LogitsProbabilitiesGenerator : MonoBehaviour, ISentenceAnimatable, IStageAnimationStatus
 {
     public Transform[] anchors;
     public IntegratedCameraController cameraController;
@@ -60,6 +60,7 @@ public class LogitsProbabilitiesGenerator : MonoBehaviour, ISentenceAnimatable
     public float textThickness = 0.4f;
 
     private float[] probabilityPercentages;
+    public bool IsStageAnimationComplete { get; private set; } = true;
 
     public void Animate(string sentence)
     {
@@ -67,14 +68,21 @@ public class LogitsProbabilitiesGenerator : MonoBehaviour, ISentenceAnimatable
         CancelInvoke(nameof(Rebuild));
         Clear();
         if (Application.isPlaying)
+        {
+            IsStageAnimationComplete = false;
             StartCoroutine(AnimateBuild());
+        }
         else
+        {
             Rebuild();
+            IsStageAnimationComplete = true;
+        }
     }
 
     public void CompleteImmediately()
     {
         StopAllCoroutines();
+        IsStageAnimationComplete = true;
         Rebuild();
     }
 
@@ -154,7 +162,10 @@ public class LogitsProbabilitiesGenerator : MonoBehaviour, ISentenceAnimatable
         int pairCount = GetPairCount();
 
         if (pairCount == 0)
+        {
+            IsStageAnimationComplete = true;
             yield break;
+        }
 
         int middleIndex = pairCount / 2;
         int[] displayOrder = GetDisplayOrder(pairCount);
@@ -224,6 +235,8 @@ public class LogitsProbabilitiesGenerator : MonoBehaviour, ISentenceAnimatable
 
             yield return new WaitForSeconds(pairRevealDelay);
         }
+
+        IsStageAnimationComplete = true;
     }
 
     private void ApplyDummyData(string sentence)
