@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 [ExecuteAlways]
-public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
+public class TokenGenerator : MonoBehaviour, ISentenceAnimatable, IStageAnimationStatus
 {
     [Header("Prefabs")]
     public GameObject tokenPrefab;
@@ -98,6 +98,7 @@ public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
     private TextMeshPro tokenColumnLabelText;
     private TextMeshPro idColumnLabelText;
     private bool suppressRevealAnimation;
+    public bool IsStageAnimationComplete { get; private set; } = true;
 
     public GameObject GetTokenObject(int index)
     {
@@ -126,6 +127,7 @@ public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
 
     public void Animate(string sentence)
     {
+        IsStageAnimationComplete = true;
         suppressRevealAnimation = false;
 
         if (!string.IsNullOrEmpty(sentence))
@@ -156,12 +158,20 @@ public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
         if (suppressRevealAnimation)
             SetColumnLabelsVisible(false);
         if (useRevealAnimation && Application.isPlaying && !suppressRevealAnimation)
+        {
+            IsStageAnimationComplete = false;
             StartCoroutine(AnimateReveal());
+        }
+        else
+        {
+            IsStageAnimationComplete = true;
+        }
     }
 
     public void CompleteImmediately()
     {
         StopAllCoroutines();
+        IsStageAnimationComplete = true;
         bool wasReveal = useRevealAnimation;
         useRevealAnimation = false;
         Rebuild();
@@ -198,6 +208,8 @@ public class TokenGenerator : MonoBehaviour, ISentenceAnimatable
             yield return new WaitForSeconds(revealStaggerDelay);
             idObjects[i].SetActive(true);
         }
+
+        IsStageAnimationComplete = true;
     }
 
     public void Clear()

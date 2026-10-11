@@ -177,6 +177,17 @@ public class TransposeGenerator : MonoBehaviour
         }
     }
 
+    public void CompleteImmediately()
+    {
+        StopAllCoroutines();
+        foreach (GameObject slab in slabObjects)
+            if (slab != null)
+                slab.SetActive(true);
+        foreach (LineRenderer line in slabLines)
+            if (line != null)
+                line.enabled = true;
+    }
+
     private Shader GetCompatibleShader()
     {
         Shader shader = Shader.Find("Universal Render Pipeline/Unlit");

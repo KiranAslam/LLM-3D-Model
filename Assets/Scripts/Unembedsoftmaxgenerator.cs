@@ -3,7 +3,7 @@ using UnityEngine;
 using TMPro;
 
 [ExecuteAlways]
-public class UnembedSoftmaxGenerator : MonoBehaviour, ISentenceAnimatable
+public class UnembedSoftmaxGenerator : MonoBehaviour, ISentenceAnimatable, IStageAnimationStatus
 {
     public Transform[] anchors;
     public IntegratedCameraController cameraController;
@@ -50,19 +50,28 @@ public class UnembedSoftmaxGenerator : MonoBehaviour, ISentenceAnimatable
     [Header("Text thickness")]
     public float textThickness = 0.4f;
 
+    public bool IsStageAnimationComplete { get; private set; } = true;
+
     public void Animate(string sentence)
     {
         CancelInvoke(nameof(Rebuild));
         Clear();
         if (Application.isPlaying)
+        {
+            IsStageAnimationComplete = false;
             StartCoroutine(AnimateBuild());
+        }
         else
+        {
             Rebuild();
+            IsStageAnimationComplete = true;
+        }
     }
 
     public void CompleteImmediately()
     {
         StopAllCoroutines();
+        IsStageAnimationComplete = true;
         Rebuild();
     }
 
@@ -170,6 +179,7 @@ public class UnembedSoftmaxGenerator : MonoBehaviour, ISentenceAnimatable
         Vector3 unembedExit = unembedPosition + Vector3.right * (unembedSize.x / 2f);
         Vector3 softmaxEntry = softmaxPosition - Vector3.right * (softmaxSize.x / 2f);
         DrawLine(unembedExit, softmaxEntry);
+        IsStageAnimationComplete = true;
     }
 
     public void Clear()

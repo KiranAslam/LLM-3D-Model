@@ -30,6 +30,13 @@ public class SceneSwitcher : MonoBehaviour
     [Tooltip("Positive value shifts the model lower in the camera view without changing model positions.")]
     public float modelViewVerticalPanOffset = 10f;
 
+    [Header("Post Add+Norm camera view")]
+    public float postAttentionXRotation;
+    public float postAttentionYRotation;
+    public float postAttentionDistance = 110f;
+    [Tooltip("Adjust X to shift horizontally and Y to shift vertically in the camera view.")]
+    public Vector3 postAttentionPanOffset = new Vector3(80f, 0f, 0f);
+
     private float lastAppliedHorizontalPanOffset;
     private float lastAppliedVerticalPanOffset;
     private float lastAppliedExploreViewDistance;
@@ -42,7 +49,9 @@ public class SceneSwitcher : MonoBehaviour
 
     void Start()
     {
-        ShowMainMenu();
+        SetPanel(panelMainMenu);
+        SetModels(false);
+        SetRobot(true);
     }
 
     void Update()
@@ -111,6 +120,9 @@ public class SceneSwitcher : MonoBehaviour
 
     public void ShowMainMenu()
     {
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.StopExploreModelVoiceSequence();
+
         SetPanel(panelMainMenu);
         SetModels(false);
         SetRobot(true); // sirf yahan robot chalega
@@ -124,6 +136,8 @@ public class SceneSwitcher : MonoBehaviour
         SetPanel(panelLLM);
         SetModels(true);
         SetRobot(false);
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.PlayExploreModelVoice();
 
         isExploreCameraView = true;
         if (modelCamera != null)
@@ -151,7 +165,36 @@ public class SceneSwitcher : MonoBehaviour
                 allowHorizontalPan: true,
                 allowVerticalPan: true
             );
-        ApplyModelCameraView(10f, 0f, 120f, new Vector3(100f, 0f, 0f));
+        ApplyModelCameraView(0f, 0f, 110f, new Vector3(80f, 0f, 0f));
+    }
+
+    public void TransitionToPostAttentionView()
+    {
+        isExploreCameraView = false;
+        if (modelCamera == null || llmModel == null)
+        {
+            Debug.LogError("Cannot transition the model view: assign both Model Camera and LLM Model in SceneSwitcher.", this);
+            return;
+        }
+
+        modelCamera.SetUserControls(
+            allowRotation: true,
+            allowZoom: true,
+            allowHorizontalPan: true,
+            allowVerticalPan: true
+        );
+
+        Transform networkOrigin = llmModel.transform.Find("NetworkOrigin");
+        Transform focusOrigin = exploreViewFocusOrigin != null
+            ? exploreViewFocusOrigin
+            : networkOrigin != null ? networkOrigin : llmModel.transform;
+        modelCamera.TransitionToView(
+            focusOrigin,
+            xRotation: postAttentionXRotation,
+            yRotation: postAttentionYRotation,
+            distance: postAttentionDistance,
+            panOffset: postAttentionPanOffset
+        );
     }
 
     private void ApplyModelCameraView(float xRotation, float yRotation, float distance, Vector3 panOffset)
