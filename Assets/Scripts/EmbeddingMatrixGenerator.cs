@@ -3,7 +3,7 @@ using TMPro;
 using System.Collections;
 
 [ExecuteAlways]
-public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable
+public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable, IStageAnimationStatus
 {
     [Header("ID layout")]
     public TokenGenerator tokenGenerator;
@@ -77,6 +77,8 @@ public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable
     public float titleFontSize = 10f;
     public Color titleColor = Color.white;
 
+    public bool IsStageAnimationComplete { get; private set; } = true;
+
     public void Animate(string sentence)
     {
         if (!string.IsNullOrEmpty(sentence))
@@ -88,14 +90,21 @@ public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable
         CreateSectionTitle(matrixTitleLabel, slabPosition + matrixTitleOffset);
         CreateVectorGroupTitle();
         if (Application.isPlaying)
+        {
+            IsStageAnimationComplete = false;
             StartCoroutine(AnimateLookups(slab));
+        }
         else
+        {
             ConnectIdsToSlab(slab);
+            IsStageAnimationComplete = true;
+        }
     }
 
     public void CompleteImmediately()
     {
         StopAllCoroutines();
+        IsStageAnimationComplete = true;
         Clear();
         GameObject slab = CreateSlab();
         CreateLabel(slab.transform);
@@ -127,6 +136,8 @@ public class EmbeddingMatrixGenerator : MonoBehaviour, ISentenceAnimatable
 
             CreateVectorAtPoint(end + Vector3.right * vectorGapX, i);
         }
+
+        IsStageAnimationComplete = true;
     }
 
     private GameObject CreateTransferCopy(GameObject source)

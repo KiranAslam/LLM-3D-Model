@@ -124,6 +124,16 @@ public class ConcatGenerator : MonoBehaviour
             line.enabled = true;
     }
 
+    public void CompleteImmediately()
+    {
+        StopAllCoroutines();
+        if (concatSheet != null)
+            concatSheet.SetActive(true);
+        foreach (LineRenderer line in concatLines)
+            if (line != null)
+                line.enabled = true;
+    }
+
     private Shader GetCompatibleShader()
     {
         Shader shader = Shader.Find("Universal Render Pipeline/Unlit");

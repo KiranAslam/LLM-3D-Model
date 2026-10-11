@@ -186,6 +186,18 @@ public class AVGenerator : MonoBehaviour
         }
     }
 
+    public void CompleteImmediately()
+    {
+        StopAllCoroutines();
+        foreach (GameObject box in avBoxes)
+            if (box != null)
+                box.SetActive(true);
+        foreach (List<LineRenderer> lines in avLines)
+            foreach (LineRenderer line in lines)
+                if (line != null)
+                    line.enabled = true;
+    }
+
     private LineRenderer DrawLine(Vector3[] points, Color color)
     {
         GameObject lineObj = new GameObject("AV_Line");
