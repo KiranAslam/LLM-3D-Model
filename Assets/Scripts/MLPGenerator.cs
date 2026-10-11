@@ -3,7 +3,7 @@ using UnityEngine;
 using TMPro;
 
 [ExecuteAlways]
-public class MLPGenerator : MonoBehaviour, ISentenceAnimatable
+public class MLPGenerator : MonoBehaviour, ISentenceAnimatable, IStageAnimationStatus
 {
     public Transform[] anchors;
     public IntegratedCameraController cameraController;
@@ -55,6 +55,8 @@ public class MLPGenerator : MonoBehaviour, ISentenceAnimatable
     [Header("Text thickness")]
     public float textThickness = 0.4f;
 
+    public bool IsStageAnimationComplete { get; private set; } = true;
+
     private void Start()
     {
         if (Application.isPlaying)
@@ -66,14 +68,21 @@ public class MLPGenerator : MonoBehaviour, ISentenceAnimatable
         CancelInvoke(nameof(Rebuild));
         Clear();
         if (Application.isPlaying)
+        {
+            IsStageAnimationComplete = false;
             StartCoroutine(AnimateBuild());
+        }
         else
+        {
             Rebuild();
+            IsStageAnimationComplete = true;
+        }
     }
 
     public void CompleteImmediately()
     {
         StopAllCoroutines();
+        IsStageAnimationComplete = true;
         Rebuild();
     }
 
@@ -201,6 +210,7 @@ public class MLPGenerator : MonoBehaviour, ISentenceAnimatable
         BuildBox(mlpOutPosition, mlpOutSize, mlpOutColor, "MLPOut_Sheet");
         CreateLabel(mlpOutTitleLabel, mlpOutPosition + mlpOutTitleOffset, mlpOutTitleFontSize, mlpOutLabelColor);
         CreateLabel(mlpOutDimensionLabel, mlpOutPosition + mlpOutDimensionOffset, mlpOutLabelFontSize, mlpOutLabelColor);
+        IsStageAnimationComplete = true;
     }
 
     private IEnumerator AnimateFeedForwardNetwork()

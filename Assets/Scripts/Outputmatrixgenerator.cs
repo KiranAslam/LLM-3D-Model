@@ -3,7 +3,7 @@ using TMPro;
 using System.Collections;
 
 [ExecuteAlways]
-public class OutputMatrixGenerator : MonoBehaviour, ISentenceAnimatable
+public class OutputMatrixGenerator : MonoBehaviour, ISentenceAnimatable, IStageAnimationStatus
 {
     [Header("Mirror values")]
     public int tokenCount = 5;
@@ -63,6 +63,7 @@ public class OutputMatrixGenerator : MonoBehaviour, ISentenceAnimatable
     private float gridLeftX;
     private float gridTotalHeight;
     private float gridTotalWidth;
+    public bool IsStageAnimationComplete { get; private set; } = true;
 
     public void Animate(string sentence)
     {
@@ -71,14 +72,21 @@ public class OutputMatrixGenerator : MonoBehaviour, ISentenceAnimatable
         CancelInvoke(nameof(Rebuild));
         Clear();
         if (Application.isPlaying)
+        {
+            IsStageAnimationComplete = false;
             StartCoroutine(AnimateBuild());
+        }
         else
+        {
             Rebuild();
+            IsStageAnimationComplete = true;
+        }
     }
 
     public void CompleteImmediately()
     {
         StopAllCoroutines();
+        IsStageAnimationComplete = true;
         Rebuild();
     }
 
@@ -137,6 +145,7 @@ public class OutputMatrixGenerator : MonoBehaviour, ISentenceAnimatable
 
         DrawMatrixLabel();
         CreateOutputTitle();
+        IsStageAnimationComplete = true;
     }
 
     private void BuildRow(GameObject matrixRoot, int row, System.Random random)
