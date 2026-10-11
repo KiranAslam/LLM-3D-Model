@@ -278,6 +278,7 @@ public class AudioTutorialController : MonoBehaviour
         isPipelinePlaybackPaused = true;
         if (voiceSource != null && voiceSource.isPlaying)
             voiceSource.Pause();
+        SetVoiceGuideButtonLabel("Resume");
     }
 
     public void ResumePipelineVoice()
@@ -285,6 +286,7 @@ public class AudioTutorialController : MonoBehaviour
         isPipelinePlaybackPaused = false;
         if (voiceSource != null)
             voiceSource.UnPause();
+        UpdateVoiceGuideButtonLabel();
     }
 
     private void SetStageVoicePlaying(bool isPlaying)
@@ -293,12 +295,21 @@ public class AudioTutorialController : MonoBehaviour
             return;
 
         isStageVoicePlaying = isPlaying;
-        SetVoiceGuideButtonLabel(isPlaying ? "Skip Voice Guide" : "Play Voice Guide");
+        UpdateVoiceGuideButtonLabel();
         StageVoicePlaybackChanged?.Invoke(isPlaying);
     }
 
     public void HandleVoiceGuideButtonClicked()
     {
+        if (isPipelinePlaybackPaused)
+        {
+            if (PipelineSimulator.Instance != null)
+                PipelineSimulator.Instance.ResumePlaybackFromVoiceGuide();
+            else
+                Debug.LogError("[AudioTutorialController] Cannot resume playback because PipelineSimulator is unavailable.", this);
+            return;
+        }
+
         if (exploreVoiceSequence != null)
         {
             StopExploreModelVoiceSequence();
@@ -337,6 +348,17 @@ public class AudioTutorialController : MonoBehaviour
     {
         if (voiceGuideButtonLabel != null)
             voiceGuideButtonLabel.text = label;
+    }
+
+    private void UpdateVoiceGuideButtonLabel()
+    {
+        SetVoiceGuideButtonLabel(
+            isPipelinePlaybackPaused
+                ? "Resume"
+                : isStageVoicePlaying || exploreVoiceSequence != null
+                    ? "Skip Voice Guide"
+                    : "Play Voice Guide"
+        );
     }
 
     public void StopExploreModelVoiceSequence()
@@ -432,13 +454,16 @@ public class AudioTutorialController : MonoBehaviour
             yield break;
         }
 
+        while (isPipelinePlaybackPaused)
+            yield return null;
+
         voiceSource.Stop();
         voiceSource.clip = clip;
         voiceSource.Play();
         if (blocksRunButton)
             SetStageVoicePlaying(true);
 
-        while (voiceSource != null && voiceSource.isPlaying)
+        while (isPipelinePlaybackPaused || (voiceSource != null && voiceSource.isPlaying))
             yield return null;
 
         if (blocksRunButton && !keepPlaybackBlockedAfterCompletion)

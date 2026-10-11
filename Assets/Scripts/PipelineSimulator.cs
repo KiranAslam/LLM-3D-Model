@@ -24,6 +24,7 @@ public class PipelineSimulator : MonoBehaviour
     [Header("Action button selected colors")]
     public Color nextButtonSelectedColor = new Color32(32, 119, 101, 255);
     public Color resetViewButtonSelectedColor = new Color32(32, 119, 101, 255);
+    public Color runButtonSelectedColor = new Color32(32, 119, 101, 255);
     public PredictedWordPanelController predictedWordPanel;
     public Color activeColor = new Color(0.114f, 0.62f, 0.459f);
     public Color normalColor = new Color(0.16f, 0.16f, 0.16f);
@@ -189,6 +190,7 @@ public class PipelineSimulator : MonoBehaviour
             StopCoroutine(automaticStageSequence);
             automaticStageSequence = null;
         }
+        automaticStageSequenceStarted = false;
         if (AudioTutorialController.Instance != null)
             AudioTutorialController.Instance.StopCurrentStageVoice();
 
@@ -250,6 +252,11 @@ public class PipelineSimulator : MonoBehaviour
 
         SetNextButtonLabel("Stop");
         UpdateStagePanelButtons();
+    }
+
+    public void ResumePlaybackFromVoiceGuide()
+    {
+        ResumePlayback();
     }
 
     private void RestoreTimeScale()

@@ -79,8 +79,11 @@ public class InputSentencePanelController : MonoBehaviour
     {
         if (string.IsNullOrEmpty(SelectedSentence))
             return;
-        runButton.image.color = selectedColor;
-        PipelineSimulator.Instance.Play(SelectedSentence);
+        if (runButton.image != null)
+            runButton.image.color = PipelineSimulator.Instance != null
+                ? PipelineSimulator.Instance.runButtonSelectedColor
+                : selectedColor;
+        PipelineSimulator.Instance?.Play(SelectedSentence);
     }
 
     private void OnStageVoicePlaybackChanged(bool isPlaying)
