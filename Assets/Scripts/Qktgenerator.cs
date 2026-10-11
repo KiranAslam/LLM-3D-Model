@@ -186,6 +186,18 @@ public class QKTGenerator : MonoBehaviour
         }
     }
 
+    public void CompleteImmediately()
+    {
+        StopAllCoroutines();
+        foreach (GameObject box in qktBoxes)
+            if (box != null)
+                box.SetActive(true);
+        foreach (List<LineRenderer> lines in qktLines)
+            foreach (LineRenderer line in lines)
+                if (line != null)
+                    line.enabled = true;
+    }
+
     private LineRenderer DrawLine(Vector3 from, Vector3 to, Color color)
     {
         GameObject lineObj = new GameObject("QKT_Line");

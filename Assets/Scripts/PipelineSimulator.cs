@@ -1,6 +1,8 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
+using TMPro;
 
 [System.Serializable]
 public class PipelineStage
@@ -17,6 +19,7 @@ public class PipelineSimulator : MonoBehaviour
 
     public PipelineStage[] stages;
     public Button nextButton;
+    [SerializeField] private TMP_Text nextButtonLabel;
     public Button resetViewButton;
     [Header("Action button selected colors")]
     public Color nextButtonSelectedColor = new Color32(32, 119, 101, 255);
@@ -30,6 +33,11 @@ public class PipelineSimulator : MonoBehaviour
     private int currentStageIndex = -1;
     private Color nextButtonNormalColor = Color.white;
     private Color resetViewButtonNormalColor = Color.white;
+    private bool automaticStageSequenceStarted;
+    private bool isPlaybackPaused;
+    private float timeScaleBeforePause = 1f;
+    private int stageChangeVersion;
+    private Coroutine automaticStageSequence;
 
     void Awake()
     {
@@ -45,12 +53,13 @@ public class PipelineSimulator : MonoBehaviour
 
         if (nextButton != null && nextButton.image != null)
             nextButtonNormalColor = nextButton.image.color;
+        if (nextButtonLabel == null && nextButton != null)
+            nextButtonLabel = nextButton.GetComponentInChildren<TMP_Text>();
         if (resetViewButton != null && resetViewButton.image != null)
             resetViewButtonNormalColor = resetViewButton.image.color;
 
         if (nextButton != null)
         {
-            nextButton.interactable = !string.IsNullOrEmpty(InputSentencePanelController.SelectedSentence);
             nextButton.onClick.AddListener(OnNextButtonClicked);
         }
 
@@ -62,10 +71,35 @@ public class PipelineSimulator : MonoBehaviour
             int index = i;
             if (stages[i].stageButton != null)
             {
-                stages[i].stageButton.interactable = !string.IsNullOrEmpty(InputSentencePanelController.SelectedSentence);
-                stages[i].stageButton.onClick.AddListener(() => JumpTo(index));
+                stages[i].stageButton.onClick.AddListener(() =>
+                {
+                    JumpTo(index);
+                });
             }
         }
+
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.StageVoicePlaybackChanged += OnStageVoicePlaybackChanged;
+
+        UpdateStagePanelButtons();
+        SetNextButtonLabel(isPlaybackPaused ? "Resume" : "Stop");
+    }
+
+    private void OnDestroy()
+    {
+        RestoreTimeScale();
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.StageVoicePlaybackChanged -= OnStageVoicePlaybackChanged;
+    }
+
+    private void OnDisable()
+    {
+        RestoreTimeScale();
+    }
+
+    private void OnEnable()
+    {
+        UpdateStagePanelButtons();
     }
 
     public void Play(string sentence)
@@ -84,15 +118,32 @@ public class PipelineSimulator : MonoBehaviour
 
     public void EnableStageButtons()
     {
-        if (string.IsNullOrEmpty(InputSentencePanelController.SelectedSentence))
-            return;
+        UpdateStagePanelButtons();
+    }
+
+    private void OnStageVoicePlaybackChanged(bool isPlaying)
+    {
+        UpdateStagePanelButtons();
+    }
+
+    private void UpdateStagePanelButtons()
+    {
+        bool stagePanelVoiceCompleted = AudioTutorialController.Instance == null ||
+                                        AudioTutorialController.Instance.IsStagePanelVoiceCompleted;
+        bool sentenceSelected = !string.IsNullOrEmpty(InputSentencePanelController.SelectedSentence);
+
+        bool hasActiveStage = currentStageIndex >= 0 && currentStageIndex < stages.Length;
+        if (nextButton != null)
+            nextButton.interactable = stagePanelVoiceCompleted && sentenceSelected &&
+                                      (hasActiveStage || isPlaybackPaused);
 
         foreach (PipelineStage stage in stages)
             if (stage.stageButton != null)
-                stage.stageButton.interactable = true;
+                stage.stageButton.interactable = stagePanelVoiceCompleted && sentenceSelected &&
+                                                 !isPlaybackPaused;
 
-        if (nextButton != null)
-            nextButton.interactable = true;
+        if (resetViewButton != null)
+            resetViewButton.interactable = stagePanelVoiceCompleted && !isPlaybackPaused;
     }
 
     public void NextStage()
@@ -133,7 +184,16 @@ public class PipelineSimulator : MonoBehaviour
             }
         }
 
+        if (automaticStageSequence != null)
+        {
+            StopCoroutine(automaticStageSequence);
+            automaticStageSequence = null;
+        }
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.StopCurrentStageVoice();
+
         currentStageIndex = -1;
+        stageChangeVersion++;
         for (int i = 0; i < stages.Length; i++)
         {
             if (stages[i].stageButton != null && stages[i].stageButton.image != null)
@@ -154,14 +214,79 @@ public class PipelineSimulator : MonoBehaviour
 
     private void OnNextButtonClicked()
     {
-        NextStage();
-        SetActionButtonSelection(nextButton, nextButtonSelectedColor, resetViewButton, resetViewButtonNormalColor);
+        if (currentStageIndex < 0)
+            return;
+
+        if (isPlaybackPaused)
+            ResumePlayback();
+        else
+            PausePlayback();
+    }
+
+    private void PausePlayback()
+    {
+        if (isPlaybackPaused)
+            return;
+
+        timeScaleBeforePause = Time.timeScale;
+        isPlaybackPaused = true;
+        Time.timeScale = 0f;
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.PausePipelineVoice();
+
+        SetNextButtonLabel("Resume");
+        UpdateStagePanelButtons();
+    }
+
+    private void ResumePlayback()
+    {
+        if (!isPlaybackPaused)
+            return;
+
+        isPlaybackPaused = false;
+        Time.timeScale = timeScaleBeforePause > 0f ? timeScaleBeforePause : 1f;
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.ResumePipelineVoice();
+
+        SetNextButtonLabel("Stop");
+        UpdateStagePanelButtons();
+    }
+
+    private void RestoreTimeScale()
+    {
+        if (!isPlaybackPaused)
+            return;
+
+        isPlaybackPaused = false;
+        Time.timeScale = timeScaleBeforePause > 0f ? timeScaleBeforePause : 1f;
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.ResumePipelineVoice();
+        SetNextButtonLabel("Stop");
+        UpdateStagePanelButtons();
+    }
+
+    private void SetNextButtonLabel(string label)
+    {
+        if (nextButtonLabel != null)
+        {
+            nextButtonLabel.text = label;
+            return;
+        }
+
+        if (nextButton != null)
+        {
+            Text legacyLabel = nextButton.GetComponentInChildren<Text>();
+            if (legacyLabel != null)
+                legacyLabel.text = label;
+        }
     }
 
     private void OnResetViewButtonClicked()
     {
         ResetModelView();
         SetActionButtonSelection(resetViewButton, resetViewButtonSelectedColor, nextButton, nextButtonNormalColor);
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.PlayResetViewVoiceOnce();
     }
 
     private static void SetActionButtonSelection(
@@ -186,6 +311,15 @@ public class PipelineSimulator : MonoBehaviour
 
     void SetActiveStage(int index)
     {
+        if (stages == null || index < 0 || index >= stages.Length)
+        {
+            Debug.LogWarning($"Cannot activate pipeline stage at index {index}.", this);
+            return;
+        }
+
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.StopCurrentStageVoice();
+
         if (SceneSwitcher.Instance != null && SceneSwitcher.Instance.modelCamera != null)
         {
             SceneSwitcher.Instance.modelCamera.SetUserControls(
@@ -210,6 +344,11 @@ public class PipelineSimulator : MonoBehaviour
         }
 
         currentStageIndex = index;
+        stageChangeVersion++;
+        UpdateStagePanelButtons();
+        if (AudioTutorialController.Instance != null)
+            AudioTutorialController.Instance.PlayStageButtonVoice(index);
+
         if (predictedWordPanel != null)
         {
             if (index == stages.Length - 1)
@@ -235,5 +374,53 @@ public class PipelineSimulator : MonoBehaviour
             onStageFocus.Invoke(stages[index].focusPoint);
         if (index == stages.Length - 1)
             onSequenceComplete.Invoke();
+
+        if (!automaticStageSequenceStarted)
+        {
+            automaticStageSequenceStarted = true;
+            automaticStageSequence = StartCoroutine(AutoAdvanceStages());
+        }
+    }
+
+    private IEnumerator AutoAdvanceStages()
+    {
+        while (currentStageIndex >= 0 && currentStageIndex < stages.Length - 1)
+        {
+            int stageIndex = currentStageIndex;
+            int observedVersion = stageChangeVersion;
+
+            while (currentStageIndex == stageIndex &&
+                   stageChangeVersion == observedVersion &&
+                   (!IsStageAnimationComplete(stageIndex) ||
+                    (AudioTutorialController.Instance != null &&
+                     AudioTutorialController.Instance.IsStageVoicePendingOrPlaying)))
+            {
+                yield return null;
+            }
+
+            if (stageChangeVersion != observedVersion)
+                continue;
+
+            if (currentStageIndex == stageIndex)
+                SetActiveStage(stageIndex + 1);
+        }
+
+        automaticStageSequence = null;
+    }
+
+    private bool IsStageAnimationComplete(int stageIndex)
+    {
+        GameObject stageRoot = stages[stageIndex].stageRoot;
+        if (stageRoot == null)
+            return true;
+
+        MonoBehaviour[] components = stageRoot.GetComponentsInChildren<MonoBehaviour>(true);
+        foreach (MonoBehaviour component in components)
+        {
+            if (component is IStageAnimationStatus status && !status.IsStageAnimationComplete)
+                return false;
+        }
+
+        return true;
     }
 }
