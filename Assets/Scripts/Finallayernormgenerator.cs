@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 [ExecuteAlways]
-public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable
+public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable, IStageAnimationStatus
 {
     public Transform[] anchors;
     public IntegratedCameraController cameraController;
@@ -63,6 +63,8 @@ public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable
     [Header("Text thickness")]
     public float textThickness = 0.4f;
 
+    public bool IsStageAnimationComplete { get; private set; } = true;
+
     private void OnEnable()
     {
         if (Application.isPlaying)
@@ -79,16 +81,21 @@ public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable
 
     public void Animate(string sentence)
     {
+        IsStageAnimationComplete = false;
         ClearPreviousModel();
         if (Application.isPlaying)
             StartCoroutine(AnimateBuild());
         else
+        {
             BuildAllImmediate();
+            IsStageAnimationComplete = true;
+        }
     }
 
     public void CompleteImmediately()
     {
         StopAllCoroutines();
+        IsStageAnimationComplete = true;
         ClearPreviousModel();
         BuildAllImmediate();
     }
@@ -137,6 +144,7 @@ public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable
         DrawLine(formulaWorld, normOutEntry);
         DrawLine(scaleWorld, normOutEntry);
         DrawLine(shiftWorld, normOutEntry);
+        IsStageAnimationComplete = true;
     }
 
     private IEnumerator AnimateBuild()
@@ -196,6 +204,7 @@ public class FinalLayerNormGenerator : MonoBehaviour, ISentenceAnimatable
         DrawLine(formulaWorld, normOutEntry);
         DrawLine(scaleWorld, normOutEntry);
         DrawLine(shiftWorld, normOutEntry);
+        IsStageAnimationComplete = true;
     }
 
     void ClearPreviousModel()

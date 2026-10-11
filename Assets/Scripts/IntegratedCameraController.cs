@@ -248,6 +248,27 @@ public class IntegratedCameraController : MonoBehaviour
         centerVelocity = Vector3.zero;
     }
 
+    public void TransitionToView(
+        Transform focusOrigin,
+        float xRotation,
+        float yRotation,
+        float distance,
+        Vector3 panOffset)
+    {
+        targetFocus = focusOrigin;
+        useTargetFocusPosition = true;
+        targetXRot = Mathf.Clamp(xRotation, minPitch, maxPitch);
+        targetYRot = Mathf.Clamp(yRotation, minYaw, maxYaw);
+        targetDistance = Mathf.Clamp(distance, minDistance, maxDistance);
+        targetPanOffset = panOffset;
+
+        centerVelocity = Vector3.zero;
+        xRotVelocity = 0f;
+        yRotVelocity = 0f;
+        distanceVelocity = 0f;
+        panVelocity = Vector3.zero;
+    }
+
     public void SetDistance(float distance)
     {
         targetDistance = Mathf.Clamp(distance, minDistance, maxDistance);
